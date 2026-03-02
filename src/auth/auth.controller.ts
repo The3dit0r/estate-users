@@ -5,6 +5,9 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { SharedSecretGuard } from './guards/shared-secret.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -38,5 +41,42 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   getProfile(@Request() req) {
     return req.user;
+  }
+
+  @Post('refresh')
+  @ApiOperation({ summary: 'Obtain new access and refresh tokens' })
+  @ApiBody({ type: RefreshTokenDto })
+  @ApiResponse({ status: 201, description: 'Tokens refreshed.' })
+  @ApiResponse({ status: 401, description: 'Invalid refresh token.' })
+  refresh(@Body() refreshDto: RefreshTokenDto) {
+    return this.authService.refreshTokens(refreshDto.refresh_token);
+  }
+
+  @Post('verify-email')
+  @ApiOperation({ summary: 'Verify email address using code sent via email' })
+  @ApiBody({ type: VerifyEmailDto })
+  @ApiResponse({ status: 200, description: 'Email verified.' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired code.' })
+  verifyEmail(@Body() payload: VerifyEmailDto) {
+    return this.authService.verifyEmail(payload.user_id, payload.code);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Logout and revoke refresh token' })
+  async logout(@Request() req) {
+    return this.authService.logout(req.user.userId);
+  }
+
+  @UseGuards(SharedSecretGuard)
+  @Post('notification-webhook')
+  @ApiOperation({
+    summary: 'Simulated endpoint secured by shared secret for notification service callbacks',
+  })
+  @ApiResponse({ status: 200, description: 'Webhook accepted.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  handleNotificationWebhook() {
+    return { status: 'ok' };
   }
 }

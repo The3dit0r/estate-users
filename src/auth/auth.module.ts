@@ -7,22 +7,40 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { HttpModule } from '@nestjs/axios';
+import { NotificationClient } from '../notification/notification.client';
+import { SharedSecretGuard } from './guards/shared-secret.guard';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
+    HttpModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        baseURL: configService.get<string>('NOTIFICATION_BASE_URL'),
+        headers: {
+          'x-notification-secret': configService.get<string>(
+            'NOTIFICATION_SHARED_SECRET',
+          ),
+        },
+        timeout: 5000,
+      }),
+    }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '60m' },
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_ACCESS_SECRET'),
+        signOptions: {
+          expiresIn: 15 * 60, // 15 minutes in seconds
+        },
       }),
       inject: [ConfigService],
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
+  providers: [AuthService, LocalStrategy, JwtStrategy, NotificationClient, SharedSecretGuard],
   exports: [AuthService],
 })
 export class AuthModule {}

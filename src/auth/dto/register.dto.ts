@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsDateString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
+} from 'class-validator';
 
 export class RegisterDto {
   @ApiProperty({
@@ -16,8 +24,20 @@ export class RegisterDto {
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(6)
+  @MinLength(8)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?])(?=\S+$).{8,}$/, {
+    message:
+      'Password must contain upper, lower, number, and special character with no whitespace',
+  })
   password: string;
+
+  @ApiProperty({
+    description: 'Repeat the password to avoid typos',
+    example: 'StrongPassword123!',
+  })
+  @IsString()
+  @IsNotEmpty()
+  password_confirmation: string;
 
   @ApiPropertyOptional({
     description: 'First name of the user',
@@ -81,7 +101,21 @@ export class RegisterDto {
     type: String,
     format: 'date'
   })
-  @IsDateString()
+  @IsString()
   @IsOptional()
-  date_of_birth?: Date;
+  @Matches(/^(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|\d{4}-\d{2}-\d{2}T.*)$/,
+    {
+      message: 'date_of_birth must be ISO-like (YYYY-MM-DD) or DD-MM-YYYY',
+    },
+  )
+  @IsOptional()
+  date_of_birth?: string;
+
+  @ApiProperty({
+    description: 'User accepted the terms of service',
+    example: true,
+  })
+  @IsBoolean()
+  @IsNotEmpty()
+  accept_terms: boolean;
 }

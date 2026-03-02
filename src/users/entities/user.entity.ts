@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Role } from '../../roles/entities/role.entity';
 
 export enum UserStatus {
@@ -14,6 +22,15 @@ export class User {
 
   @Column({ unique: true })
   email: string;
+
+  @Column({ default: false })
+  email_verified: boolean;
+
+  @Column({ nullable: true, select: false })
+  email_verification_code?: string;
+
+  @Column({ type: 'timestamp', nullable: true, select: false })
+  email_verification_expires_at?: Date;
 
   @Column({ nullable: true })
   date_of_birth: Date;
@@ -45,6 +62,12 @@ export class User {
   @Column({ nullable: true, select: false }) // Hide by default
   password_hash: string;
 
+  @Column({ nullable: true, select: false })
+  refresh_token_hash?: string;
+
+  @Column({ type: 'timestamp', nullable: true, select: false })
+  refresh_token_expires_at?: Date;
+
   @ManyToOne(() => Role, { eager: true }) // Eager load role
   @JoinColumn({ name: 'role_id' })
   role: Role;
@@ -55,7 +78,7 @@ export class User {
   @Column({
     type: 'simple-enum',
     enum: UserStatus,
-    default: UserStatus.ACTIVE
+    default: UserStatus.ACTIVE,
   })
   user_status: UserStatus;
 
@@ -64,6 +87,9 @@ export class User {
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  last_login_at?: Date;
 
   // Accessor for Passport compatibility
   get password(): string {
