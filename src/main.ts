@@ -20,7 +20,8 @@ async function bootstrap() {
     .setTitle('User Service')
     .setDescription('User Service API description')
     .setVersion('1.0')
-    .addTag('users')
+    .addTag('users').addBearerAuth().addServer('https://api.estate.maik.io.vn/users', "Production")
+    .addServer('http://localhost:3000', "Local")
     .build();
 
   const documentFactory = () => SwaggerModule.createDocument(app, config);
