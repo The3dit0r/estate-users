@@ -9,6 +9,21 @@ import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User, UserStatus } from '../users/entities/user.entity';
+import { Role } from '../roles/entities/role.entity';
+import { TokenResponseDto } from './dto/token-response.dto';
+import { LoginResponseDto } from './dto/login-response.dto';
+import { RegisterResponseDto } from './dto/register-response.dto';
+
+
+export type UserWithoutSecrets = Omit<User, 'password_hash' | 'refresh_token_hash'>;
+
+export interface JwtPayload {
+  email: string;
+  sub: string;
+  role: string | Role;
+}
+
+
 import { ConfigService } from '@nestjs/config';
 import { NotificationClient } from '../notification/notification.client';
 import { randomUUID } from 'crypto';
@@ -27,7 +42,7 @@ export class AuthService {
   ) { }
 
 
-  async validateUser(email: string, pass: string): Promise<any> {
+  async validateUser(email: string, pass: string): Promise<UserWithoutSecrets | null> {
     const user = await this.usersService.findOneByEmail(email);
     if (user && user.password_hash) {
       const isMatch = await bcrypt.compare(pass, user.password_hash);
@@ -35,10 +50,6 @@ export class AuthService {
 
       if (user.user_status !== UserStatus.ACTIVE) {
         throw new ForbiddenException('User is not active');
-      }
-
-      if (!user.email_verified) {
-        throw new UnauthorizedException('Email not verified');
       }
 
       if (!user.email_verified) {
@@ -99,8 +110,8 @@ export class AuthService {
     return date;
   }
 
-  private async issueTokens(user: Partial<User>) {
-    const role = (user.role as any)?.name ?? user.role;
+  private async issueTokens(user: Partial<User>): Promise<TokenResponseDto> {
+    const role = user.role instanceof Role ? user.role.name : (user.role as unknown as string);
     const payload = { email: user.email, sub: user.user_id, role };
     const accessExpires =
       this.configService.get<string>('JWT_ACCESS_EXPIRES') || '15m';
@@ -132,18 +143,18 @@ export class AuthService {
     };
   }
 
-  async login(user: any) {
+  async login(user: UserWithoutSecrets): Promise<LoginResponseDto> {
     const tokens = await this.issueTokens(user);
     await this.usersService.update(user.user_id, {
       last_login_at: new Date(),
-    } as any);
+    });
     return {
       ...tokens,
-      user,
+      user: user as unknown as LoginResponseDto['user'],
     };
   }
 
-  async register(registerDto: RegisterDto) {
+  async register(registerDto: RegisterDto): Promise<RegisterResponseDto> {
     const existingUser = await this.usersService.findOneByEmail(registerDto.email);
     if (existingUser && existingUser.email_verified) {
       throw new ConflictException('Email already exists');
@@ -157,7 +168,7 @@ export class AuthService {
       throw new BadRequestException('You must accept the terms of service');
     }
 
-    const { password_confirmation, accept_terms, date_of_birth, ...payload } =
+    const { password_confirmation, accept_terms, date_of_birth, password, ...payload } =
       registerDto;
 
     const normalizedDob = this.normalizeDate(date_of_birth);
@@ -170,8 +181,6 @@ export class AuthService {
     let user: User;
     if (existingUser) {
       // Update existing unverified user with new registration info
-      // @ts-ignore
-      delete payload.password;
       await this.usersService.update(existingUser.user_id, {
         ...payload,
         date_of_birth: normalizedDob,
@@ -213,10 +222,12 @@ export class AuthService {
     });
 
     const { password_hash: p, refresh_token_hash, ...result } = user;
-    return {
+    const registerResponse: RegisterResponseDto = {
       message: 'Registration successful. Please verify your email.',
-      user: result,
+      user: result as unknown as RegisterResponseDto['user'],
     };
+
+    return registerResponse;
   }
 
   async refreshTokens(refreshToken: string) {
@@ -277,11 +288,11 @@ export class AuthService {
     return { message: 'Email verified successfully' };
   }
 
-  async getProfile(user_id: string) {
+  async getProfile(user_id: string): Promise<User | null> {
     return this.usersService.findOneById(user_id);
   }
 
-  async logout(user_id: string) {
+  async logout(user_id: string): Promise<{ message: string }> {
     await this.usersService.clearRefreshToken(user_id);
     return { message: 'Logged out' };
   }

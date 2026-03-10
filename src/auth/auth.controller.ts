@@ -13,11 +13,27 @@ import { RegisterResponseDto } from './dto/register-response.dto';
 import { MessageResponseDto } from './dto/message-response.dto';
 import { TokenResponseDto } from './dto/token-response.dto';
 import { UserResponseDto } from '../users/dto/user-response.dto';
+import { Request as ExpressRequest } from 'express';
+import { UserWithoutSecrets } from './auth.service';
+import { JwtService } from '@nestjs/jwt';
+
+interface RequestWithUser extends ExpressRequest {
+  user: UserWithoutSecrets;
+}
+
+interface RequestWithPayload extends ExpressRequest {
+  user: {
+    user_id: string;
+    email: string;
+    role: string;
+  };
+}
+
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService, private jwtService: JwtService) { }
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
@@ -25,7 +41,7 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   @ApiResponse({ status: 201, description: 'User successfully logged in.', type: LoginResponseDto })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
-  async login(@Request() req): Promise<LoginResponseDto> {
+  async login(@Request() req: RequestWithUser): Promise<LoginResponseDto> {
     return this.authService.login(req.user);
   }
 
@@ -45,10 +61,11 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'User profile retrieved successfully.', type: UserResponseDto })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
-  async getProfile(@Request() req): Promise<UserResponseDto> {
-    const user = await this.authService.getProfile(req.user.user_id);
+  async getProfile(@Request() req: RequestWithPayload): Promise<UserResponseDto> {
+    const jwtPayload = this.jwtService.decode<{ sub: string }>(req.headers.authorization?.split(' ')[1] || '');
+    const user = await this.authService.getProfile(jwtPayload.sub || '');
     if (!user) throw new NotFoundException('User not found');
-    return user as any;
+    return user as unknown as UserResponseDto;
   }
 
 
@@ -76,7 +93,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout and revoke refresh token' })
   @ApiResponse({ status: 201, description: 'Logged out successfully.', type: MessageResponseDto })
-  async logout(@Request() req): Promise<MessageResponseDto> {
+  async logout(@Request() req: RequestWithPayload): Promise<MessageResponseDto> {
     return this.authService.logout(req.user.user_id);
   }
 
