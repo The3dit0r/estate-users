@@ -14,6 +14,8 @@ import { NotificationClient } from '../notification/notification.client';
 import { randomUUID } from 'crypto';
 import { RegisterDto } from './dto/register.dto';
 
+import { RolesService } from '../roles/roles.service';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -21,7 +23,9 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private notificationClient: NotificationClient,
+    private rolesService: RolesService,
   ) { }
+
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.usersService.findOneByEmail(email);
@@ -104,12 +108,12 @@ export class AuthService {
       this.configService.get<string>('JWT_REFRESH_EXPIRES') || '7d';
 
     const access_token = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
+      secret: this.configService.get<string>('JWT_SECRET'),
       expiresIn: 15 * 60, // 15 minutes in seconds
     });
 
     const refresh_token = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+      secret: this.configService.get<string>('JWT_SECRET'),
       expiresIn: 7 * 24 * 60 * 60, // 7 days in seconds
     });
 
@@ -161,6 +165,8 @@ export class AuthService {
     const salt = await bcrypt.genSalt();
     const password_hash = await bcrypt.hash(registerDto.password, salt);
 
+    const defaultRole = await this.rolesService.findByName('user');
+
     let user: User;
     if (existingUser) {
       // Update existing unverified user with new registration info
@@ -172,6 +178,7 @@ export class AuthService {
         password_hash,
         user_status: UserStatus.ACTIVE,
         email_verified: false,
+        role_id: existingUser.role_id || defaultRole?.role_id,
       });
       user = (await this.usersService.findOneByEmail(registerDto.email))!;
     } else {
@@ -181,8 +188,10 @@ export class AuthService {
         password_hash,
         user_status: UserStatus.ACTIVE,
         email_verified: false,
+        role_id: defaultRole?.role_id,
       });
     }
+
 
     // verification code should be a 8 digit number
     const verificationCode = Math.floor(10000000 + Math.random() * 90000000).toString();
@@ -213,7 +222,7 @@ export class AuthService {
   async refreshTokens(refreshToken: string) {
     try {
       const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        secret: this.configService.get<string>('JWT_SECRET'),
       });
 
       const user = await this.usersService.findOneByIdWithSecrets(payload.sub);
@@ -268,8 +277,13 @@ export class AuthService {
     return { message: 'Email verified successfully' };
   }
 
+  async getProfile(user_id: string) {
+    return this.usersService.findOneById(user_id);
+  }
+
   async logout(user_id: string) {
     await this.usersService.clearRefreshToken(user_id);
     return { message: 'Logged out' };
   }
 }
+

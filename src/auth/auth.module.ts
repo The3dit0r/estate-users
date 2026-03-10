@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
+import { RolesModule } from '../roles/roles.module';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -14,6 +15,7 @@ import { SharedSecretGuard } from './guards/shared-secret.guard';
 @Module({
   imports: [
     UsersModule,
+    RolesModule,
     PassportModule,
     HttpModule.registerAsync({
       imports: [ConfigModule],
