@@ -21,7 +21,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private notificationClient: NotificationClient,
-  ) {}
+  ) { }
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.usersService.findOneByEmail(email);
@@ -164,6 +164,8 @@ export class AuthService {
     let user: User;
     if (existingUser) {
       // Update existing unverified user with new registration info
+      // @ts-ignore
+      delete payload.password;
       await this.usersService.update(existingUser.user_id, {
         ...payload,
         date_of_birth: normalizedDob,
