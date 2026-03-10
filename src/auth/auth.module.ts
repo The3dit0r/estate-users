@@ -21,8 +21,8 @@ import { SharedSecretGuard } from './guards/shared-secret.guard';
       useFactory: (configService: ConfigService) => ({
         baseURL: configService.get<string>('NOTIFICATION_BASE_URL'),
         headers: {
-          'x-notification-secret': configService.get<string>(
-            'NOTIFICATION_SHARED_SECRET',
+          'X-Notification-Secret': configService.get<string>(
+            'NOTIFICATION_SECRET',
           ),
         },
         timeout: 5000,
