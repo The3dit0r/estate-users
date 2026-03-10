@@ -39,7 +39,7 @@ interface RequestWithPayload extends ExpressRequest {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
-    constructor(private readonly usersService: UsersService, private readonly jwt: JwtService) { }
+    constructor(private readonly usersService: UsersService, private jwt: JwtService) { }
 
     // USER PROFILE
     @Patch('profile')
@@ -49,8 +49,8 @@ export class UsersController {
         @Request() req: RequestWithPayload,
         @Body() updateUserDto: UpdateUserDto,
     ): Promise<UserResponseDto> {
+        const { sub } = this.jwt.decode<{ sub: string }>(req.headers.authorization?.split(' ')[1] || '');
 
-        const { sub } = this.jwt.decode<{ sub: string }>(req.headers.authorization?.split[1]);
         // Type-safe mapping
         const { date_of_birth, ...rest } = updateUserDto;
         const updateData: Partial<User> = { ...rest };
