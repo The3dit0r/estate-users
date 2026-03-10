@@ -50,7 +50,7 @@ export class UsersController {
         @Body() updateUserDto: UpdateUserDto,
     ): Promise<UserResponseDto> {
 
-        const { user_id } = this.jwt.decode<{ user_id: string }>(req.headers.authorization?.split[1]);
+        const { sub } = this.jwt.decode<{ sub: string }>(req.headers.authorization?.split[1]);
         // Type-safe mapping
         const { date_of_birth, ...rest } = updateUserDto;
         const updateData: Partial<User> = { ...rest };
@@ -58,8 +58,8 @@ export class UsersController {
             updateData.date_of_birth = new Date(date_of_birth);
         }
 
-        await this.usersService.update(user_id, updateData);
-        const updatedUser = await this.usersService.findOneById(user_id);
+        await this.usersService.update(sub, updateData);
+        const updatedUser = await this.usersService.findOneById(sub);
         if (!updatedUser) throw new NotFoundException('User not found');
         return updatedUser as unknown as UserResponseDto;
     }
