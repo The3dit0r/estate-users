@@ -184,7 +184,8 @@ export class AuthService {
       });
     }
 
-    const verificationCode = randomUUID();
+    // verification code should be a 8 digit number
+    const verificationCode = Math.floor(10000000 + Math.random() * 90000000).toString();
     const verificationExpires = this.computeExpiryDate(
       '24h',
       24 * 60 * 60 * 1000,
