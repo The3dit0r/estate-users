@@ -6,14 +6,14 @@ import { firstValueFrom } from 'rxjs';
 export interface EmailSendRequest {
   to: string;
   subject: string;
-  content: string;
+  body: string;
 }
 
 @Injectable()
 export class NotificationClient {
   private readonly logger = new Logger(NotificationClient.name);
 
-  constructor(private readonly httpService: HttpService) {}
+  constructor(private readonly httpService: HttpService) { }
 
   async sendEmail(payload: EmailSendRequest): Promise<void> {
     try {
@@ -51,7 +51,7 @@ Trân trọng,
     await this.sendEmail({
       to: payload.email,
       subject,
-      content,
+      body: content,
     });
   }
 }
