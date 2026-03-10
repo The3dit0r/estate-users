@@ -11,6 +11,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { HttpModule } from '@nestjs/axios';
 import { NotificationClient } from '../notification/notification.client';
 import { SharedSecretGuard } from './guards/shared-secret.guard';
+import { RolesGuard } from './guards/roles.guard';
+
 
 @Module({
   imports: [
@@ -42,7 +44,7 @@ import { SharedSecretGuard } from './guards/shared-secret.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy, NotificationClient, SharedSecretGuard],
+  providers: [AuthService, LocalStrategy, JwtStrategy, NotificationClient, SharedSecretGuard, RolesGuard],
   exports: [AuthService],
 })
 export class AuthModule {}
