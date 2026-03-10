@@ -15,7 +15,7 @@ import { LoginResponseDto } from './dto/login-response.dto';
 import { RegisterResponseDto } from './dto/register-response.dto';
 
 
-export type UserWithoutSecrets = Omit<User, 'password_hash' | 'refresh_token_hash'>;
+export type UserWithoutSecrets = Omit<User, 'password' | 'password_hash' | 'refresh_token_hash'>;
 
 export interface JwtPayload {
   email: string;
