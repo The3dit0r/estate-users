@@ -141,7 +141,7 @@ export class AuthService {
 
   async register(registerDto: RegisterDto) {
     const existingUser = await this.usersService.findOneByEmail(registerDto.email);
-    if (existingUser) {
+    if (existingUser && existingUser.email_verified) {
       throw new ConflictException('Email already exists');
     }
 
@@ -153,37 +153,54 @@ export class AuthService {
       throw new BadRequestException('You must accept the terms of service');
     }
 
-    const { password_confirmation, accept_terms, date_of_birth, ...payload } = registerDto;
+    const { password_confirmation, accept_terms, date_of_birth, ...payload } =
+      registerDto;
 
     const normalizedDob = this.normalizeDate(date_of_birth);
 
     const salt = await bcrypt.genSalt();
     const password_hash = await bcrypt.hash(registerDto.password, salt);
 
-    const newUser = await this.usersService.create({
-      ...payload,
-      date_of_birth: normalizedDob,
-      password_hash,
-      user_status: UserStatus.ACTIVE,
-      email_verified: false,
-    });
+    let user: User;
+    if (existingUser) {
+      // Update existing unverified user with new registration info
+      await this.usersService.update(existingUser.user_id, {
+        ...payload,
+        date_of_birth: normalizedDob,
+        password_hash,
+        user_status: UserStatus.ACTIVE,
+        email_verified: false,
+      });
+      user = (await this.usersService.findOneByEmail(registerDto.email))!;
+    } else {
+      user = await this.usersService.create({
+        ...payload,
+        date_of_birth: normalizedDob,
+        password_hash,
+        user_status: UserStatus.ACTIVE,
+        email_verified: false,
+      });
+    }
 
     const verificationCode = randomUUID();
-    const verificationExpires = this.computeExpiryDate('24h', 24 * 60 * 60 * 1000);
+    const verificationExpires = this.computeExpiryDate(
+      '24h',
+      24 * 60 * 60 * 1000,
+    );
     await this.usersService.saveVerificationCode(
-      newUser.user_id,
+      user.user_id,
       verificationCode,
       verificationExpires,
     );
 
     await this.notificationClient.sendEmailVerification({
-      userId: newUser.user_id,
-      email: newUser.email,
+      userId: user.user_id,
+      email: user.email,
       code: verificationCode,
       expiresAt: verificationExpires,
     });
-    
-    const { password_hash: p, refresh_token_hash, ...result } = newUser;
+
+    const { password_hash: p, refresh_token_hash, ...result } = user;
     return {
       message: 'Registration successful. Please verify your email.',
       user: result,
